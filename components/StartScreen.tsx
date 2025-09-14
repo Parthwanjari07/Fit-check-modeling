@@ -10,16 +10,23 @@ import { Compare } from './ui/compare';
 import { generateModelImage } from '../services/geminiService';
 import Spinner from './Spinner';
 import { getFriendlyErrorMessage } from '../lib/utils';
+import ModelProviderSelector from './ModelProviderSelector';
+import { ModelProvider, AppMode } from '../types';
+import ModeSelector from './ModeSelector';
 
 interface StartScreenProps {
-  onModelFinalized: (modelUrl: string) => void;
+  onStartImageFinalized: (imageUrl: string, imageFile: File, mode: AppMode) => void;
 }
 
-const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
+const StartScreen: React.FC<StartScreenProps> = ({ onStartImageFinalized }) => {
   const [userImageUrl, setUserImageUrl] = useState<string | null>(null);
+  const [userImageFile, setUserImageFile] = useState<File | null>(null);
   const [generatedModelUrl, setGeneratedModelUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [appMode, setAppMode] = useState<AppMode>('try-on');
+  const [modelProvider, setModelProvider] = useState<ModelProvider>('gemini');
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -31,6 +38,15 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
     reader.onload = async (e) => {
         const dataUrl = e.target?.result as string;
         setUserImageUrl(dataUrl);
+        setUserImageFile(file);
+
+        if (appMode === 'mockups') {
+            // For mockups, we just use the logo directly, no generation step here.
+            setGeneratedModelUrl(dataUrl); 
+            return;
+        }
+
+        // For try-on, generate the model image
         setIsGenerating(true);
         setGeneratedModelUrl(null);
         setError(null);
@@ -40,12 +56,13 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
         } catch (err) {
             setError(getFriendlyErrorMessage(err, 'Failed to create model'));
             setUserImageUrl(null);
+            setUserImageFile(null);
         } finally {
             setIsGenerating(false);
         }
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [appMode]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -55,9 +72,15 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
 
   const reset = () => {
     setUserImageUrl(null);
+    setUserImageFile(null);
     setGeneratedModelUrl(null);
     setIsGenerating(false);
     setError(null);
+  };
+  
+  const handleProceed = () => {
+    if (!generatedModelUrl || !userImageFile) return;
+    onStartImageFinalized(generatedModelUrl, userImageFile, appMode);
   };
 
   const screenVariants = {
@@ -65,6 +88,8 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: 20 },
   };
+
+  const isTryOn = appMode === 'try-on';
 
   return (
     <AnimatePresence mode="wait">
@@ -80,31 +105,52 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
         >
           <div className="lg:w-1/2 flex flex-col items-center lg:items-start text-center lg:text-left">
             <div className="max-w-lg">
-              <h1 className="text-5xl md:text-6xl font-serif font-bold text-gray-900 leading-tight">
-                Create Your Model for Any Look.
+              <div className="mb-6 w-full max-w-xs self-center lg:self-start">
+                  <ModeSelector selectedMode={appMode} onModeChange={setAppMode} />
+              </div>
+              <h1 className="text-5xl md:text-6xl font-serif font-bold text-gray-900 dark:text-gray-100 leading-tight">
+                {isTryOn ? 'Create Your Model for Any Look.' : 'Create Instant Mockups.'}
               </h1>
-              <p className="mt-4 text-lg text-gray-600">
-                Ever wondered how an outfit would look on you? Stop guessing. Upload a photo and see for yourself. Our AI creates your personal model, ready to try on anything.
+              <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
+                {isTryOn 
+                  ? 'Ever wondered how an outfit would look on you? Stop guessing. Upload a photo and see for yourself.'
+                  : 'Instantly visualize your brand on anything. Upload your logo to create photorealistic mockups in seconds.'
+                }
               </p>
-              <hr className="my-8 border-gray-200" />
-              <div className="flex flex-col items-center lg:items-start w-full gap-3">
-                <label htmlFor="image-upload-start" className="w-full relative flex items-center justify-center px-8 py-3 text-base font-semibold text-white bg-gray-900 rounded-md cursor-pointer group hover:bg-gray-700 transition-colors">
+              <hr className="my-8 border-gray-200 dark:border-gray-700" />
+              <div className="flex flex-col items-center lg:items-start w-full gap-4">
+                <label htmlFor="image-upload-start" className="w-full relative flex items-center justify-center px-8 py-3 text-base font-semibold text-white bg-gray-900 rounded-md cursor-pointer group hover:bg-gray-700 dark:text-gray-900 dark:bg-gray-200 dark:hover:bg-gray-300 transition-colors">
                   <UploadCloudIcon className="w-5 h-5 mr-3" />
-                  Upload Photo
+                  {isTryOn ? 'Upload Photo' : 'Upload Logo'}
                 </label>
                 <input id="image-upload-start" type="file" className="hidden" accept="image/png, image/jpeg, image/webp, image/avif, image/heic, image/heif" onChange={handleFileChange} />
-                <p className="text-gray-500 text-sm">Select a clear, full-body photo. Face-only photos also work, but full-body is preferred for best results.</p>
+                
+                {isTryOn && (
+                  <div className="w-full max-w-xs self-center lg:self-start">
+                    <ModelProviderSelector selectedProvider={modelProvider} onProviderChange={setModelProvider} disabled={isGenerating} />
+                    <p className="text-gray-500 dark:text-gray-400 text-xs mt-2 text-center">
+                      Select an AI for styling. Model creation uses Gemini.
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-gray-500 text-sm">
+                  {isTryOn 
+                    ? 'Select a clear, full-body photo. Face-only photos also work, but full-body is preferred for best results.'
+                    : 'For best results, upload a logo with a transparent background (PNG format).'
+                  }
+                </p>
                 <p className="text-gray-500 text-xs mt-1">By uploading, you agree not to create harmful, explicit, or unlawful content. This service is for creative and responsible use only.</p>
-                {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">{error}</p>}
               </div>
             </div>
           </div>
           <div className="w-full lg:w-1/2 flex flex-col items-center justify-center">
             <Compare
-              firstImage="https://storage.googleapis.com/gemini-95-icons/asr-tryon.jpg"
-              secondImage="https://storage.googleapis.com/gemini-95-icons/asr-tryon-model.png"
+              firstImage={isTryOn ? "https://storage.googleapis.com/gemini-95-icons/asr-tryon.jpg" : "https://storage.googleapis.com/gemini-95-icons/Project-Vito-Icon.png"}
+              secondImage={isTryOn ? "https://storage.googleapis.com/gemini-95-icons/asr-tryon-model.png" : "https://storage.googleapis.com/gemini-95-icons/Project-Vito-Tshirt.png"}
               slideMode="drag"
-              className="w-full max-w-sm aspect-[2/3] rounded-2xl bg-gray-200"
+              className="w-full max-w-sm aspect-[2/3] rounded-2xl bg-gray-200 dark:bg-gray-800"
             />
           </div>
         </motion.div>
@@ -120,26 +166,26 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
         >
           <div className="md:w-1/2 flex-shrink-0 flex flex-col items-center md:items-start">
             <div className="text-center md:text-left">
-              <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 leading-tight">
-                The New You
+              <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 dark:text-gray-100 leading-tight">
+                {isTryOn ? 'The New You' : 'Your Logo, Reimagined'}
               </h1>
-              <p className="mt-2 text-md text-gray-600">
-                Drag the slider to see your transformation.
+              <p className="mt-2 text-md text-gray-600 dark:text-gray-400">
+                {isTryOn ? 'Drag the slider to see your transformation.' : 'Your logo is ready to be placed on any item.'}
               </p>
             </div>
             
             {isGenerating && (
-              <div className="flex items-center gap-3 text-lg text-gray-700 font-serif mt-6">
+              <div className="flex items-center gap-3 text-lg text-gray-700 dark:text-gray-300 font-serif mt-6">
                 <Spinner />
                 <span>Generating your model...</span>
               </div>
             )}
 
             {error && 
-              <div className="text-center md:text-left text-red-600 max-w-md mt-6">
-                <p className="font-semibold">Generation Failed</p>
+              <div className="text-center md:text-left text-red-600 dark:text-red-400 max-w-md mt-6">
+                <p className="font-semibold">{isTryOn ? 'Generation Failed' : 'Upload Failed'}</p>
                 <p className="text-sm mb-4">{error}</p>
-                <button onClick={reset} className="text-sm font-semibold text-gray-700 hover:underline">Try Again</button>
+                <button onClick={reset} className="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:underline">Try Again</button>
               </div>
             }
             
@@ -154,15 +200,15 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
                 >
                   <button 
                     onClick={reset}
-                    className="w-full sm:w-auto px-6 py-3 text-base font-semibold text-gray-700 bg-gray-200 rounded-md cursor-pointer hover:bg-gray-300 transition-colors"
+                    className="w-full sm:w-auto px-6 py-3 text-base font-semibold text-gray-700 bg-gray-200 rounded-md cursor-pointer hover:bg-gray-300 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
                   >
-                    Use Different Photo
+                    Use Different {isTryOn ? 'Photo' : 'Logo'}
                   </button>
                   <button 
-                    onClick={() => onModelFinalized(generatedModelUrl)}
-                    className="w-full sm:w-auto relative inline-flex items-center justify-center px-8 py-3 text-base font-semibold text-white bg-gray-900 rounded-md cursor-pointer group hover:bg-gray-700 transition-colors"
+                    onClick={handleProceed}
+                    className="w-full sm:w-auto relative inline-flex items-center justify-center px-8 py-3 text-base font-semibold text-white bg-gray-900 rounded-md cursor-pointer group hover:bg-gray-700 dark:text-gray-900 dark:bg-gray-200 dark:hover:bg-gray-300 transition-colors"
                   >
-                    Proceed to Styling &rarr;
+                    {isTryOn ? 'Proceed to Styling' : 'Create Mockups'} &rarr;
                   </button>
                 </motion.div>
               )}
@@ -170,13 +216,13 @@ const StartScreen: React.FC<StartScreenProps> = ({ onModelFinalized }) => {
           </div>
           <div className="md:w-1/2 w-full flex items-center justify-center">
             <div 
-              className={`relative rounded-[1.25rem] transition-all duration-700 ease-in-out ${isGenerating ? 'border border-gray-300 animate-pulse' : 'border border-transparent'}`}
+              className={`relative rounded-[1.25rem] transition-all duration-700 ease-in-out ${isGenerating ? 'border border-gray-300 dark:border-gray-700 animate-pulse' : 'border border-transparent'}`}
             >
               <Compare
                 firstImage={userImageUrl}
                 secondImage={generatedModelUrl ?? userImageUrl}
                 slideMode="drag"
-                className="w-[280px] h-[420px] sm:w-[320px] sm:h-[480px] lg:w-[400px] lg:h-[600px] rounded-2xl bg-gray-200"
+                className="w-[280px] h-[420px] sm:w-[320px] sm:h-[480px] lg:w-[400px] lg:h-[600px] rounded-2xl bg-gray-200 dark:bg-gray-800"
               />
             </div>
           </div>

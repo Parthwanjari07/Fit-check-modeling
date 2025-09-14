@@ -4,6 +4,7 @@
 */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ThemeToggle from './ThemeToggle';
 
 const REMIX_SUGGESTIONS = [
   "Remix idea: Generate a shareable lookbook.",
@@ -16,9 +17,11 @@ const REMIX_SUGGESTIONS = [
 
 interface FooterProps {
   isOnDressingScreen?: boolean;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
-const Footer: React.FC<FooterProps> = ({ isOnDressingScreen = false }) => {
+const Footer: React.FC<FooterProps> = ({ isOnDressingScreen = false, theme, toggleTheme }) => {
   const [suggestionIndex, setSuggestionIndex] = useState(0);
 
   useEffect(() => {
@@ -30,19 +33,21 @@ const Footer: React.FC<FooterProps> = ({ isOnDressingScreen = false }) => {
   }, []);
 
   return (
-    <footer className={`fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-200/60 p-3 z-50 ${isOnDressingScreen ? 'hidden sm:block' : ''}`}>
-      <div className="mx-auto flex flex-col sm:flex-row items-center justify-between text-xs text-gray-600 max-w-7xl px-4">
-        <p>
-          Created by{' '}
-          <a 
-            href="https://x.com/ammaar" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="font-semibold text-gray-800 hover:underline"
-          >
-            @ammaar
-          </a>
-        </p>
+    <footer className={`fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-md border-t border-gray-200/60 dark:border-gray-800/60 p-3 z-50 ${isOnDressingScreen ? 'hidden sm:block' : ''}`}>
+      <div className="mx-auto flex flex-col sm:flex-row items-center justify-between text-xs text-gray-600 dark:text-gray-400 max-w-7xl px-4">
+        <div className="flex items-center gap-4">
+          <p>
+            Created by{' '}
+            <a 
+              href="https://valnee.com/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="font-semibold text-gray-800 dark:text-gray-200 hover:underline"
+            >
+              @Valnee
+            </a>
+          </p>
+        </div>
         <div className="h-4 mt-1 sm:mt-0 flex items-center overflow-hidden">
             <AnimatePresence mode="wait">
               <motion.p
@@ -57,6 +62,7 @@ const Footer: React.FC<FooterProps> = ({ isOnDressingScreen = false }) => {
               </motion.p>
             </AnimatePresence>
         </div>
+        <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
       </div>
     </footer>
   );

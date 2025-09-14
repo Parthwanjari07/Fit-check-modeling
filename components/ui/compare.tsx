@@ -192,8 +192,8 @@ export const Compare = ({
             />
           </div>
           {showHandlebar && (
-            <div className="h-5 w-5 rounded-md top-1/2 -translate-y-1/2 bg-white z-30 -right-2.5 absolute flex items-center justify-center border border-gray-300/80">
-              <DotsVerticalIcon className="h-4 w-4 text-black" />
+            <div className="h-5 w-5 rounded-md top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 z-30 -right-2.5 absolute flex items-center justify-center border border-gray-300/80 dark:border-gray-600/80">
+              <DotsVerticalIcon className="h-4 w-4 text-black dark:text-gray-200" />
             </div>
           )}
         </motion.div>

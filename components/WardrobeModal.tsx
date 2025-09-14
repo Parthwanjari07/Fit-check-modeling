@@ -3,17 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 import React, { useState } from 'react';
-import type { WardrobeItem } from '../types';
+import type { WardrobeItem, ModelProvider } from '../types';
 import { UploadCloudIcon, CheckCircleIcon } from './icons';
+import ModelProviderSelector from './ModelProviderSelector';
 
 interface WardrobePanelProps {
   onGarmentSelect: (garmentFile: File, garmentInfo: WardrobeItem) => void;
   activeGarmentIds: string[];
   isLoading: boolean;
   wardrobe: WardrobeItem[];
+  modelProvider: ModelProvider;
+  onProviderChange: (provider: ModelProvider) => void;
 }
 
-// Helper to convert image URL to a File object using a canvas to bypass potential CORS issues.
 const urlToFile = (url: string, filename: string): Promise<File> => {
     return new Promise((resolve, reject) => {
         const image = new Image();
@@ -48,15 +50,13 @@ const urlToFile = (url: string, filename: string): Promise<File> => {
     });
 };
 
-const WardrobePanel: React.FC<WardrobePanelProps> = ({ onGarmentSelect, activeGarmentIds, isLoading, wardrobe }) => {
+const WardrobePanel: React.FC<WardrobePanelProps> = ({ onGarmentSelect, activeGarmentIds, isLoading, wardrobe, modelProvider, onProviderChange }) => {
     const [error, setError] = useState<string | null>(null);
 
     const handleGarmentClick = async (item: WardrobeItem) => {
         if (isLoading || activeGarmentIds.includes(item.id)) return;
         setError(null);
         try {
-            // If the item was from an upload, its URL is a blob URL. We need to fetch it to create a file.
-            // If it was a default item, it's a regular URL. This handles both.
             const file = await urlToFile(item.url, item.name);
             onGarmentSelect(file, item);
         } catch (err) {
@@ -83,8 +83,12 @@ const WardrobePanel: React.FC<WardrobePanelProps> = ({ onGarmentSelect, activeGa
     };
 
   return (
-    <div className="pt-6 border-t border-gray-400/50">
-        <h2 className="text-xl font-serif tracking-wider text-gray-800 mb-3">Wardrobe</h2>
+    <div className="pt-6 border-t border-gray-400/50 dark:border-gray-500/50">
+        <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AI Provider</label>
+            <ModelProviderSelector selectedProvider={modelProvider} onProviderChange={onProviderChange} disabled={isLoading} />
+        </div>
+        <h2 className="text-xl font-serif tracking-wider text-gray-800 dark:text-gray-200 mb-3">Wardrobe</h2>
         <div className="grid grid-cols-3 gap-3">
             {wardrobe.map((item) => {
             const isActive = activeGarmentIds.includes(item.id);
@@ -93,7 +97,7 @@ const WardrobePanel: React.FC<WardrobePanelProps> = ({ onGarmentSelect, activeGa
                 key={item.id}
                 onClick={() => handleGarmentClick(item)}
                 disabled={isLoading || isActive}
-                className="relative aspect-square border rounded-lg overflow-hidden transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-800 group disabled:opacity-60 disabled:cursor-not-allowed"
+                className="relative aspect-square border dark:border-gray-700 rounded-lg overflow-hidden transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-800 dark:focus:ring-gray-300 group disabled:opacity-60 disabled:cursor-not-allowed"
                 aria-label={`Select ${item.name}`}
                 >
                 <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
@@ -108,16 +112,16 @@ const WardrobePanel: React.FC<WardrobePanelProps> = ({ onGarmentSelect, activeGa
                 </button>
             );
             })}
-            <label htmlFor="custom-garment-upload" className={`relative aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-500 transition-colors ${isLoading ? 'cursor-not-allowed bg-gray-100' : 'hover:border-gray-400 hover:text-gray-600 cursor-pointer'}`}>
+            <label htmlFor="custom-garment-upload" className={`relative aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 transition-colors ${isLoading ? 'cursor-not-allowed bg-gray-100 dark:bg-gray-800' : 'hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer'}`}>
                 <UploadCloudIcon className="w-6 h-6 mb-1"/>
                 <span className="text-xs text-center">Upload</span>
                 <input id="custom-garment-upload" type="file" className="hidden" accept="image/png, image/jpeg, image/webp, image/avif, image/heic, image/heif" onChange={handleFileChange} disabled={isLoading}/>
             </label>
         </div>
         {wardrobe.length === 0 && (
-             <p className="text-center text-sm text-gray-500 mt-4">Your uploaded garments will appear here.</p>
+             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">Your uploaded garments will appear here.</p>
         )}
-        {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
+        {error && <p className="text-red-500 dark:text-red-400 text-sm mt-4">{error}</p>}
     </div>
   );
 };

@@ -104,3 +104,23 @@ export const generatePoseVariation = async (tryOnImageUrl: string, poseInstructi
     });
     return handleApiResponse(response);
 };
+
+export const generateMockupImage = async (logoImage: File, itemDescription: string): Promise<string> => {
+    const logoImagePart = await fileToPart(logoImage);
+    const prompt = `You are a professional mockup generator AI. You will be given a 'logo image' and an 'item description'. Your task is to create a photorealistic image of the described item with the logo placed on it naturally.
+
+**Crucial Rules:**
+1.  **Studio Quality:** The item should be presented in a clean, professional studio setting with a neutral, light-colored background.
+2.  **Realistic Placement:** The logo must be clearly visible and integrated realistically onto the item's surface. It must match the item's texture, curves, shadows, and lighting.
+3.  **Item Description:** "${itemDescription}".
+4.  **Output:** Return ONLY the final, edited image. Do not include any text.`;
+      
+    const response = await ai.models.generateContent({
+        model,
+        contents: { parts: [logoImagePart, { text: prompt }] },
+        config: {
+            responseModalities: [Modality.IMAGE, Modality.TEXT],
+        },
+    });
+    return handleApiResponse(response);
+};
